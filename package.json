@@ -1,0 +1,11 @@
+{
+  "name": "dev_camper_api",
+  "version": "1.0.0",
+  "description": "Devcamper backend API",
+  "main": "server.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Albert Stjärne",
+  "license": "MIT"
+}

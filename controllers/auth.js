@@ -1,3 +1,4 @@
+const crypto = require('crypto');
 const ErrorResponse = require('../utils/errorResponse');
 const asyncHandler = require('../middleware/async');
 const sendEmail = require('../utils/sendEmail');
@@ -75,9 +76,9 @@ exports.forgotPassword = asyncHandler(async (req, res, next) => {
   // create reset url
   const resetUrl = `${req.protocol}://${req.get(
     'host'
-  )}/api/v1/resetpassword/${resetToken}`;
+  )}/api/v1/auth/resetpassword/${resetToken}`;
 
-  const message = `You are receivng this email because you (or someone else) has requested the reset of a password. Please make a PUT request to: \n\n ${resetUrl}`;
+  const message = `You are receiving this email because you (or someone else) has requested the reset of a password. Please make a PUT request to: \n\n ${resetUrl}`;
 
   try {
     await sendEmail({
@@ -86,7 +87,7 @@ exports.forgotPassword = asyncHandler(async (req, res, next) => {
       message,
     });
 
-    // res.status(200).json({ sucess: true, data: 'Email sent', user });
+    res.status(200).json({ success: true, data: 'Email sent' });
   } catch (err) {
     console.log(err);
     user.resetPasswordToken = undefined;
@@ -96,8 +97,34 @@ exports.forgotPassword = asyncHandler(async (req, res, next) => {
 
     return next(new ErrorResponse('Email could not be sent', 500));
   }
+});
 
-  res.status(200).json({ success: true, data: 'Email sent' });
+// @desc    reset password
+// @route   PUT /api/v1/auth/resetpassword/:resettoken
+// @access  public
+exports.resetPassword = asyncHandler(async (req, res, next) => {
+  // get hashed token
+  const resetPasswordToken = crypto
+    .createHash('sha256')
+    .update(req.params.resettoken)
+    .digest('hex');
+
+  const user = await User.findOne({
+    resetPasswordToken,
+    resetPasswordExpire: { $gt: Date.now() },
+  });
+
+  if (!user) {
+    return next(new ErrorResponse('Invalid token', 400));
+  }
+
+  // set new password
+  user.password = req.body.password;
+  user.resetPasswordToken = undefined;
+  user.resetPasswordExpire = undefined;
+  await user.save();
+
+  sendTokenResponse(user, 200, res);
 });
 
 // get token from model, create cookie and send response (helper function)
